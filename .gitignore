@@ -1,0 +1,8 @@
+#### ipynb and MAC
+/.virtual_documents/
+*.ipynb_checkpoints
+__pycache__/
+*/__pycache__/
+.Python
+.DS_Store
+*/.DS_Store
