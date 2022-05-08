@@ -1,6 +1,6 @@
 {
     "cfg":{
-        "checkpoint_path":"./chkp/model_checkpoint_white_paper.pt"
+        "checkpoint_path":"./chkp/chkpt_1024_200"
     },
 
     "cfg_CIFAR":{
@@ -23,6 +23,6 @@
     },
 
     "cfg_train":{
-        "n_epoches":2
+        "n_epoches":200
     }
 }

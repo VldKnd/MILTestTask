@@ -1,6 +1,6 @@
 {
     "cfg":{
-        "checkpoint_path":"./chkp/model_checkpoint_white_paper.pt"
+        "checkpoint_path":"./chkp/chkpt_128_200"
     },
 
     "cfg_CIFAR":{
@@ -9,7 +9,7 @@
     },
 
     "cfg_dataloader_train":{
-        "batch_size":1024,
+        "batch_size":128,
         "shuffle":true,
         "num_workers":2,
         "pin_memory":true
@@ -23,6 +23,6 @@
     },
 
     "cfg_train":{
-        "n_epoches":2
+        "n_epoches":200
     }
 }

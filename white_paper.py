@@ -31,15 +31,18 @@ parser.add_argument('--seed', default=None, type=int,
 
 def main():
 
-    best_acc = 0
-    last_epoch = 0
     args = parser.parse_args()
-    
     with open(args.cfg) as configurations:
         cfg, cfg_CIFAR, cfg_dataloader_train, cfg_dataloader_test, cfg_train = json.load(configurations).values()
+        
+    best_acc = 0
+    last_epoch = 0
+    from_checkpoint = os.path.exists(cfg["checkpoint_path"])
+    is_cuda = torch.cuda.is_available()
+    
 
 
-    cfg["device"] = torch.device("cuda") if torch.cuda.is_available() \
+    cfg["device"] = torch.device("cuda") if is_cuda \
                 else torch.device("cpu")
 
     train_transform = transforms.Compose([
@@ -63,7 +66,7 @@ def main():
     schedResNet20 = MultiStepLR(optimResNet20, last_epoch=-1,
                                 milestones=[100, 150], gamma=0.1)
 
-    if os.path.exists(cfg["checkpoint_path"]):
+    if from_checkpoint:
         checkpoint = torch.load(cfg["checkpoint_path"])
         last_epoch = checkpoint["epoch"] + 1
         best_acc = checkpoint["best_acc"]
@@ -75,13 +78,16 @@ def main():
     Acc = Accuracy(reduction="sum")
 
     if args.evaluate:
-        ce, acc = validate(testloader, ResNet20, CELoss, Acc, verbose=True)
-        print("Cross Entropy: {}, Accuracy: {}".format(ce.avg, acc.avg))
+        ce, acc = validate(testloader, ResNet20, CELoss, Acc, cfg["device"], verbose=True)
+        print("Cross Entropy: {:.3f}, Accuracy: {:.3f}".format(ce.avg, acc.avg))
         return
-
+    
+    print("| Training | GPU {} | Epoches {} | Checkpoint {} |".format(
+        is_cuda, cfg_train["n_epoches"], from_checkpoint))
+    
     for epoch in (pbar := tqdm(range(last_epoch, cfg_train["n_epoches"]+last_epoch))):
         CE_train, acc_train = train(trainloader, ResNet20, optimResNet20, CELoss, Acc, cfg["device"])
-        CE_test, acc_test = validate(trainloader, ResNet20, CELoss, Acc, cfg["device"])
+        CE_test, acc_test = validate(testloader, ResNet20, CELoss, Acc, cfg["device"])
         schedResNet20.step()
 
         is_best = acc_test.avg > best_acc
@@ -95,7 +101,7 @@ def main():
                 'scheduler' : schedResNet20.state_dict()
             }, cfg["checkpoint_path"])
 
-        pbar.set_description("Best Acc.: {} | Train: CE {:.3f} Acc. {:.3f}| Test: CE {:.3f} Acc. {:.3f} | LR: {}".format(
+        pbar.set_description("Best Acc.: {.3f} | Train: CE {:.3f} Acc. {:.3f}| Test: CE {:.3f} Acc. {:.3f} | LR: {}".format(
                              best_acc, CE_train.avg, acc_train.avg, CE_test.avg, acc_test.avg, schedResNet20.get_last_lr()[0]))
 
 if __name__ == '__main__':

@@ -26,7 +26,7 @@ def train(loader, model, optimizer, loss, criterion, device):
 
         losses.update(output.item(), X_size)
         top1.update(accuracy, X_size)
-        break
+        
     return losses, top1
 
 def validate(loader, model, loss, criterion, device, verbose=False):
@@ -50,5 +50,5 @@ def validate(loader, model, loss, criterion, device, verbose=False):
 
         losses.update(output.item(), X_size)
         top1.update(accuracy, X_size)
-        break
+        
     return losses, top1

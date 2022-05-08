@@ -49,7 +49,3 @@ class AverageMeter(object):
         self.sum += val
         self.count += n
         self.avg = self.sum / self.count
-
-def save_checkpoint(dict, is_best, path):
-    if is_best:
-        torch.save(dict, path)

@@ -1,4 +1,5 @@
 ### model Creation of ResNet20
+import torch
 from torch import nn
 
 class SkipConnection(nn.Module):
@@ -28,7 +29,7 @@ class BlockConnection(nn.Module):
         Description
         """
         super().__init__()
-        self.connections = [
+        self.connections = nn.ModuleList([
             SkipConnection(
                 nn.Sequential(
                     nn.Conv2d(channels, channels, 3, padding=1, bias=False),
@@ -37,16 +38,15 @@ class BlockConnection(nn.Module):
                     nn.Conv2d(channels, channels, 3, padding=1, bias=False),
                     nn.BatchNorm2d(channels),
                 )   
-            ) for _ in range(n_blocks)
-        ]
+            ) for _ in range(n_blocks)])
 
     def forward(self, X):
         """
         Description
         """
         out = X
-        for i, _ in enumerate(self.connections):
-            out = self.connections[i](out)
+        for i, module in enumerate(self.connections):
+            out = module(out)
 
         return out
 
