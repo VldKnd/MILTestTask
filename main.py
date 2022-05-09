@@ -65,7 +65,7 @@ def main():
                                 milestones=[100, 150], gamma=0.1)
 
     if from_checkpoint:
-        checkpoint = torch.load(cfg["checkpoint_path"])
+        checkpoint = torch.load(cfg["checkpoint_path"], map_location=cfg["device"])
         last_epoch = checkpoint["epoch"] + 1
         best_acc = checkpoint["best_acc"]
         ResNet20.load_state_dict(checkpoint["state_dict"])

@@ -11,16 +11,16 @@ class SkipConnection(nn.Module):
         super().__init__()
         self.f_m = f_m
         self.f_s = f_s
-        self.relu = nn.ReLU()
+        self.add_relu = nn.quantized.FloatFunctional()
         
     def forward(self, X):
         """
         Description
         """
         if self.f_s is not None:
-            return self.relu(self.f_s(X) + self.f_m(X))
+            return self.add_relu.add_relu(self.f_s(X), self.f_m(X))
         else:
-            return self.relu(X + self.f_m(X))
+            return self.add_relu.add_relu(X, self.f_m(X))
 
 class BlockConnection(nn.Module):
 
