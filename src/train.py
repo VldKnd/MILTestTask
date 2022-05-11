@@ -51,4 +51,5 @@ def validate(loader, model, loss, criterion, device, verbose=False):
         losses.update(output.item(), X_size)
         top1.update(accuracy, X_size)
         
+        
     return losses, top1

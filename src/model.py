@@ -1,5 +1,4 @@
 ### model Creation of ResNet20
-import torch
 from torch import nn
 
 class SkipConnection(nn.Module):
@@ -37,7 +36,7 @@ class BlockConnection(nn.Module):
                     nn.ReLU(),
                     nn.Conv2d(channels, channels, 3, padding=1, bias=False),
                     nn.BatchNorm2d(channels),
-                )   
+                )
             ) for _ in range(n_blocks)])
 
     def forward(self, X):
