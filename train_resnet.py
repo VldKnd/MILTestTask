@@ -15,9 +15,9 @@ from torchvision.datasets import CIFAR10
 from torch.optim.lr_scheduler import MultiStepLR
 
 ### Custom
+from src.utils import Accuracy
 from src.model import ResNet20
 from src.train import train, validate
-from src.utils import Accuracy
 
 parser = argparse.ArgumentParser(description='ResNet Training')
 parser.add_argument('cfg', metavar='cfg', default='imagenet',

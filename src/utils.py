@@ -6,9 +6,6 @@ import torch
 class Accuracy(object):
 
     def __init__(self, reduction="sum"):
-        """
-        Description
-        """
         if reduction not in ["mean", "sum"]:
             raise AttributeError('The reduction can be either sum or mean')
             
@@ -16,9 +13,6 @@ class Accuracy(object):
         
     @torch.no_grad()
     def __call__(self, x ,y):
-        """
-        Description
-        """
         if self.reduction == "sum":
             return (x.argmax(1) == y).float().sum().item()
         else:
@@ -27,34 +21,22 @@ class Accuracy(object):
 class AverageMeter(object):
 
     def __init__(self, name):
-        """
-        Description
-        """
         self.name = name
         self.reset()
 
     def reset(self):
-        """
-        Description
-        """
         self.val = 0
         self.avg = 0
         self.sum = 0
         self.count = 0
 
     def update(self, val, n=1):
-        """
-        Description
-        """
         self.val = val
         self.sum += val
         self.count += n
         self.avg = self.sum / self.count
 
 def get_model_size(model):
-    """
-    Description
-    """
     torch.save(model.state_dict(), "temp.p")
     size = os.path.getsize("temp.p")/1e6
     os.remove('temp.p')

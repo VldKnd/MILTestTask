@@ -1,15 +1,15 @@
 {
     "cfg":{
-        "checkpoint_path":"./chkp/chkpt_256_200"
+        "checkpoint_path":"./chkp/64_200"
     },
 
     "cfg_CIFAR":{
         "root":"./data",
-        "download":false
+        "download":true
     },
 
     "cfg_dataloader_train":{
-        "batch_size":256,
+        "batch_size":64,
         "shuffle":true,
         "num_workers":2,
         "pin_memory":true

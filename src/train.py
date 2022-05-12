@@ -4,9 +4,6 @@ from tqdm import tqdm
 from src.utils import AverageMeter
 
 def train(loader, model, optimizer, loss, criterion, device):
-    """
-    Description
-    """
     losses = AverageMeter('Loss')
     top1 = AverageMeter('Accuracy')
 
@@ -30,9 +27,6 @@ def train(loader, model, optimizer, loss, criterion, device):
     return losses, top1
 
 def validate(loader, model, loss, criterion, device, verbose=False):
-    """
-    Description
-    """
     losses = AverageMeter('Loss')
     top1 = AverageMeter('Accuracy')
 

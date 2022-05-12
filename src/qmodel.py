@@ -7,7 +7,16 @@ class Q(nn.Module):
 
     def __init__(self, weight_dtype=torch.qint8, activation_dtype=torch.quint8):
         """
-        Description
+        Базавый блок для кавнтированных аналогов функций из torch.nn.*
+        Этот класс нужен для того, что бы он инициализировать общие для всех блоков переменные и создать несколько удобных функций.
+
+        Параметры
+        ----------
+        weight_dtype : torch.dtype, (default = torch.qint8)
+            Тип данных для квантизации весов моделей
+
+        activation_dtype : torch.dtype, (default = torch.quint8)
+            Тип данных для квантизации активаций
         """
         super().__init__()
         self.weight_dtype = weight_dtype
@@ -23,11 +32,19 @@ class Q(nn.Module):
 
 
     @torch.no_grad()
-    def set_activation_tensor_assym_scale_offset(self, data):
-        self.d_min = min(data.min(), self.d_min) if self.d_min is not None\
-                     else data.min()
-        self.d_max = max(data.max(), self.d_max) if self.d_max is not None\
-                     else data.max()
+    def set_activation_tensor_assym_scale_offset(self, activation):
+        """
+        Этот класс подсчитывает статистики для ассиметричной квантизации тензоров активации для следующего слоя в нейронной сети.
+
+        Параметры
+        ----------
+        activation : torch.Tensor,
+            Тензор активации, который необходимо квантизовать.
+        """
+        self.d_min = min(activation.min(), self.d_min) if self.d_min is not None\
+                     else activation.min()
+        self.d_max = max(activation.max(), self.d_max) if self.d_max is not None\
+                     else activation.max()
         _activation_scale = (self.d_max - self.d_min)/(self.q_max - self.q_min)
         _activation_offset = self.q_min - (self.d_min/_activation_scale)
         self._activation_scale = nn.Parameter(
@@ -40,7 +57,7 @@ class Q(nn.Module):
     @torch.no_grad()
     def compile(self):
         """
-        Description
+        Функция, которая удаляет не нужные перменные и меняет флаг для остановки пересчета статистик для квантизации.
         """
         self._computed = True
         del self.q_min
@@ -52,15 +69,20 @@ class QInput(Q):
 
     def __init__(self, weight_dtype=torch.qint8, activation_dtype=torch.quint8):
         """
-        Description
+        Блок для квантизации входного тензора
+
+        Параметры
+        ----------
+        weight_dtype : torch.dtype, (default = torch.qint8)
+            Тип данных для квантизации весов моделей
+
+        activation_dtype : torch.dtype, (default = torch.quint8)
+            Тип данных для квантизации активаций
         """
         super().__init__(weight_dtype, activation_dtype)
     
     @torch.no_grad()
     def forward(self, X):
-        """
-        Description
-        """
         if not self._computed:
             activation = X.dequantize()
             self.set_activation_tensor_assym_scale_offset(activation)
@@ -69,13 +91,18 @@ class QInput(Q):
                 X, self._activation_scale, self._activation_offset, self.activation_dtype
         )
 
-class QAvgPool2d(Q):
+class QAvgPool2d(nn.Module):
     
-    def __init__(self, AvgPool2d, weight_dtype=torch.qint8, activation_dtype=torch.quint8):
+    def __init__(self, AvgPool2d, *args, **kwargs):
         """
-        Description
+        Квантизированный аналог nn.AvgPool2d
+
+        Параметры
+        ----------
+        AvgPool2d : nn.AvgPool2d,
+            AvgPool2d из оригинальной нейронной сети. Эта переменная нужна, что бы переписать параметры пулинга.
         """
-        super().__init__(weight_dtype, activation_dtype)
+        super().__init__()
         self.pool_kwargs = {
             "kernel_size":AvgPool2d.kernel_size,
             "stride":AvgPool2d.stride,
@@ -84,16 +111,24 @@ class QAvgPool2d(Q):
 
     @torch.no_grad()
     def forward(self, X):
-        """
-        Description
-        """
         return qF.avg_pool2d(X, **self.pool_kwargs)
 
 class QLinear(Q):
 
     def __init__(self, Linear, weight_dtype=torch.qint8, activation_dtype=torch.quint8):
         """
-        Description
+        Квантизированный аналог nn.Linear
+
+        Параметры
+        ----------
+        Linear : nn.Linear,
+            Предобученый линейный слой из оригинальной сети.
+
+        weight_dtype : torch.dtype, (default = torch.qint8)
+            Тип данных для квантизации весов моделей
+
+        activation_dtype : torch.dtype, (default = torch.quint8)
+            Тип данных для квантизации активаций
         """
         super().__init__(weight_dtype, activation_dtype)
         self.Linear = Linear
@@ -119,10 +154,6 @@ class QLinear(Q):
 
     @torch.no_grad()
     def forward(self, X):
-        """
-        Description
-        """
-
         if not self._computed:
             activation = self.Linear(X.dequantize())
             self.set_activation_tensor_assym_scale_offset(activation)
@@ -146,7 +177,18 @@ class QConv2d(Q):
 
     def __init__(self, Conv2d, weight_dtype=torch.qint8, activation_dtype=torch.quint8):
         """
-        Description
+        Квантизированный аналог nn.Conv2d
+
+        Параметры
+        ----------
+        Conv2d : nn.Conv2d,
+            Предобученый сверточный слой из оригинальной сети.
+
+        weight_dtype : torch.dtype, (default = torch.qint8)
+            Тип данных для квантизации весов моделей
+
+        activation_dtype : torch.dtype, (default = torch.quint8)
+            Тип данных для квантизации активаций
         """
         super().__init__(weight_dtype, activation_dtype)
 
@@ -196,7 +238,21 @@ class QConvBatch2d(QConv2d):
 
     def __init__(self, Conv2d, BatchNorm, weight_dtype=torch.qint8, activation_dtype=torch.quint8):
         """
-        Description
+        Квантизированный аналог nn.Conv2d совмещенной с BatchNorm2d.
+
+        Параметры
+        ----------
+        Conv2d : nn.Conv2d,
+            Предобученый сверточный слой из оригинальной сети.
+
+        BatchNorm : nn.BatchNorm,
+            Предобученная нормализация по батчу из оригинальной сети.
+
+        weight_dtype : torch.dtype, (default = torch.qint8)
+            Тип данных для квантизации весов моделей
+
+        activation_dtype : torch.dtype, (default = torch.quint8)
+            Тип данных для квантизации активаций
         """
         super().__init__(Conv2d, weight_dtype, activation_dtype)
         self.Conv2d = Conv2d
@@ -255,7 +311,21 @@ class QConvBatchReLU2d(QConvBatch2d):
 
     def __init__(self, Conv2d, BatchNorm, weight_dtype=torch.qint8, activation_dtype=torch.quint8):
         """
-        Description
+        Квантизированный аналог nn.Conv2d совмещенной с BatchNorm2d и ReLU.
+
+        Параметры
+        ----------
+        Conv2d : nn.Conv2d,
+            Предобученый сверточный слой из оригинальной сети.
+
+        BatchNorm : nn.BatchNorm,
+            Предобученная нормализация по батчу из оригинальной сети.
+
+        weight_dtype : torch.dtype, (default = torch.qint8)
+            Тип данных для квантизации весов моделей
+
+        activation_dtype : torch.dtype, (default = torch.quint8)
+            Тип данных для квантизации активаций
         """
         super().__init__(Conv2d, BatchNorm, weight_dtype, activation_dtype)
 
@@ -265,9 +335,9 @@ class QConvBatchReLU2d(QConvBatch2d):
 
 class QFlatten(nn.Module):
 
-    def __init__(self, Flatten):
+    def __init__(self,  *args, **kwargs):
         """
-        Description
+        Квантизированный аналог nn.Flatten
         """
         super().__init__()
         
@@ -277,26 +347,42 @@ class QFlatten(nn.Module):
         
 class QSkipConnection(Q):
 
-    def __init__(self, SkipConnection):
+    def __init__(self, SkipConnection, weight_dtype=torch.qint8, activation_dtype=torch.quint8):
         """
-        Description
+        Квантизированный аналог nn.Conv2d совмещенной с BatchNorm2d и ReLU.
+
+        Параметры
+        ----------
+        SkipConnection : nn.Conv2d,
+            Предобученная SkipConnection из оригинальной сети.
+
+        weight_dtype : torch.dtype, (default = torch.qint8)
+            Тип данных для квантизации весов моделей
+
+        activation_dtype : torch.dtype, (default = torch.quint8)
+            Тип данных для квантизации активаций
         """
-        super().__init__()
+        super().__init__(weight_dtype, activation_dtype)
+        self.f_o = SkipConnection.f
+        self.c_o = SkipConnection.c
         self.f = quantize_merge_model(SkipConnection.f, quantize_wrap=False)
         self.c = quantize_merge_model(SkipConnection.c, quantize_wrap=False)
         
     @torch.no_grad()
     def forward(self, X):
-        """
-        Description
-        """
         if not self._computed:
             self.set_activation_tensor_assym_scale_offset(
-                torch.relu(self.c(X).dequantize() +self.f(X).dequantize())
+                torch.relu(self.c_o(X.dequantize()) +self.f_o(X.dequantize()))
             )
 
         return torch.ops.quantized.add_relu(self.c(X), self.f(X),
          self._activation_scale, self._activation_offset)
+
+    @torch.no_grad()
+    def compile(self):
+        super().compile()
+        del self.f_o
+        del self.c_o
 
 map_to_q = {
     "Conv2d":QConv2d,
@@ -309,11 +395,30 @@ map_to_q = {
 }
 
 def compile_module(m):
+    """
+    Итерирует по всем блокам квантированной нейронной сети и вызывает compile методы, которые стирают не нужные данные и останавливают сбор статистик активаций.
+
+    Параметры
+    ----------
+    m : nn.Module,
+        Модуль нейронной сети.
+    """
     if hasattr(m, "compile"):
         m.compile()
 
 @torch.no_grad()
 def get_tensor_assym_scale_offset(data, dtype):
+    """
+    Подсчитывает статистики для ассимитричной квантизации тензора
+
+    Параметры
+    ----------
+    data : torch.Tensor,
+        Данные которые нужно квантизировать.
+
+    dtype : torch.dtype,
+        Тип данных для квантизации.
+    """
     d_min = data.min()
     d_max = data.max()
     q_min = torch.iinfo(dtype).min
@@ -322,7 +427,24 @@ def get_tensor_assym_scale_offset(data, dtype):
     offset = q_min - (d_min/scale)
     return scale, offset
 
-def quantize_merge_model(model, quantize_wrap=True):
+def quantize_merge_model(model, quantize_wrap=True, weight_dtype=torch.qint8, activation_dtype=torch.quint8):
+    """
+    Квантизирует обуенную нейронную сеть
+
+    Параметры
+    ----------
+    model : torch.Tensor,
+        Нейронная сеть, которую необходимо квантизировать.
+
+    quantize_wrap : bool, (default=True)
+        Флаг, означающий, нужно ли квантировать вход и трансформировать выход нейронной сети во float.
+
+    weight_dtype : torch.dtype, (default = torch.qint8)
+        Тип данных для квантизации весов моделей
+
+    activation_dtype : torch.dtype, (default = torch.quint8)
+        Тип данных для квантизации активаций
+    """
     qmodels = []
 
     if quantize_wrap:
@@ -339,17 +461,17 @@ def quantize_merge_model(model, quantize_wrap=True):
                 if model[k+2]._get_name() == "ReLU" and\
                 model[k+1]._get_name() == "BatchNorm2d":
                     qmodels.append(
-                        map_to_q["ConvBatchReLU2d"](model[k], model[k+1])
+                        map_to_q["ConvBatchReLU2d"](model[k], model[k+1], weight_dtype, activation_dtype)
                     )
                     k+=3
             elif k+1 < n_modules:
                 if model[k+1]._get_name() == "BatchNorm2d":
                     qmodels.append(
-                        map_to_q["ConvBatch2d"](model[k], model[k+1])
+                        map_to_q["ConvBatch2d"](model[k], model[k+1], weight_dtype, activation_dtype)
                         )
                     k+=2
         else:
-            qmodels.append(map_to_q[model[k]._get_name()](model[k]))
+            qmodels.append(map_to_q[model[k]._get_name()](model[k], weight_dtype, activation_dtype))
             k+=1
 
     if quantize_wrap:

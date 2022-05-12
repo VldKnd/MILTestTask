@@ -1,0 +1,28 @@
+{
+    "cfg":{
+        "checkpoint_path":"", //Path to checkpoint for saving model weights
+    },
+
+    "cfg_CIFAR":{
+        "root":"",//Path to data
+        "download":false //Wether to download data or not
+    },
+
+    "cfg_dataloader_train":{ //Torch dataloader parameters for train
+        "batch_size":64,
+        "shuffle":true,
+        "num_workers":2,
+        "pin_memory":true
+    },
+
+    "cfg_dataloader_test":{ //Torch dataloader parameters for test
+        "batch_size":1024,
+        "shuffle":false,
+        "num_workers":2,
+        "pin_memory":true
+    },
+
+    "cfg_train":{ //Configuration for training
+        "n_epoches":200
+    }
+}

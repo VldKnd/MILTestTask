@@ -6,7 +6,14 @@ class SkipConnection(nn.Module):
 
     def __init__(self, f, c=nn.Identity()):
         """
-        Description
+        Имплементация SkipConnection для ResNet архитектуры.
+        Замещает стандартную нейронную сеть f(x): R_n -> R_n на f(x)+x 
+                                            f(x): R_n -> R_M на f(x)+c(x)
+        Параметры
+        ----------
+        f : torch.nn.Module,
+            
+        c : torch.nn.Module,
         """
         super().__init__()
         self.f = f
@@ -14,9 +21,6 @@ class SkipConnection(nn.Module):
         self.ff = nn.quantized.FloatFunctional()
         
     def forward(self, X):
-        """
-        Description
-        """
         return self.ff.add_relu(self.c(X), self.f(X))
 
 def ResNet20():
