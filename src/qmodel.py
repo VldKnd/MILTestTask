@@ -372,7 +372,32 @@ def quantize_model(model):
     k, n_modules = 0, len(model)
     while k < n_modules:
         if model[k]._get_name() == "Conv2d":
-            
+
+            if model[k+2]._get_name() == "ReLU" and\
+               model[k+1]._get_name() == "BatchNorm2d":
+                qmodels.append(
+                    map_to_q["ConvBatchReLU2d"](model[k], model[k+1])
+                )
+                k+=3
+
+            elif model[k+1]._get_name() == "BatchNorm2d":
+                qmodels.append(
+                    map_to_q["ConvBatch2d"](model[k], model[k+1])
+                    )
+                k+=2
+        else:
+            qmodels.append(map_to_q[model[k]._get_name()](model[k]))
+            k+=1
+
+    qmodels.append(DeQuantize())
+    return nn.Sequential(*qmodels)
+
+def quantize_merge_model(model):
+    qmodels = [QInput()]
+    k, n_modules = 0, len(model)
+    while k < n_modules:
+        if model[k]._get_name() == "Conv2d":
+
             if model[k+2]._get_name() == "ReLU" and\
                model[k+1]._get_name() == "BatchNorm2d":
                 qmodels.append(
