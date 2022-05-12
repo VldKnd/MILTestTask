@@ -12,12 +12,13 @@ class SkipConnection(nn.Module):
         super().__init__()
         self.f = f
         self.c = c
+        self.ff = nn.quantized.FloatFunctional()
         
     def forward(self, X):
         """
         Description
         """
-        return torch.relu(self.c(X) + self.f(X))
+        return self.ff.add_relu(self.c(X), self.f(X))
 
 def ResNet20():
     return nn.Sequential(

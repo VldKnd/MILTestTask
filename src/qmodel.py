@@ -56,6 +56,7 @@ class QInput(Q):
         """
         super().__init__(weight_dtype, activation_dtype)
     
+    @torch.no_grad()
     def forward(self, X):
         """
         Description
@@ -81,6 +82,7 @@ class QAvgPool2d(Q):
             "padding":AvgPool2d.padding,
         }
 
+    @torch.no_grad()
     def forward(self, X):
         """
         Description
@@ -115,6 +117,7 @@ class QLinear(Q):
             requires_grad=False,
         )
 
+    @torch.no_grad()
     def forward(self, X):
         """
         Description
@@ -259,78 +262,7 @@ class QConvBatchReLU2d(QConvBatch2d):
     @torch.no_grad()
     def forward(self, X):
         return torch.nn.functional.relu(super().forward(X))
-        
-class QSkipConnection(nn.Module):
 
-    def __init__(self, f_m, f_s=None):
-        """
-        Description
-        """
-        super().__init__()
-        self.f_m = f_m
-        self.f_s = f_s
-        self.q_add = torch.nn.quantized.QFunctional().add
-        
-    def forward(self, X):
-        """
-        Description
-        """
-        if self.f_s is not None:
-            return torch.relu(self.q_add(self.f_s(X),self.f_m(X)))
-        else:
-            return torch.relu(self.q_add(X,self.f_m(X)))
-
-class QBlockConnection(nn.Module):
-
-    def __init__(self, BlockConnection, weight_dtype=torch.qint8, activation_dtype=torch.quint8):
-        """
-        Description
-        """
-        super().__init__()
-        self.connections = nn.ModuleList([
-            QSkipConnection(
-                nn.Sequential(
-                    QConvBatchReLU2d(Connection.f_m[0], Connection.f_m[1], weight_dtype, activation_dtype),
-                    QConvBatch2d(Connection.f_m[3], Connection.f_m[4], weight_dtype, activation_dtype)
-                ),
-            ) for Connection in BlockConnection.connections])
-
-    def forward(self, X):
-        """
-        Description
-        """
-        out = X
-        for i, module in enumerate(self.connections):
-            out = module(out)
-
-        return out
-
-class QDownsamplingConnection(nn.Module):
-
-    def __init__(self, DownsamplingConnection, weight_dtype=torch.qint8, activation_dtype=torch.quint8):
-        """
-        Description
-        """
-        super().__init__()
-        self.module =  QSkipConnection(
-            nn.Sequential(
-                QConvBatchReLU2d(DownsamplingConnection.module.f_m[0], 
-                                DownsamplingConnection.module.f_m[1], weight_dtype, activation_dtype),
-                QConvBatch2d(DownsamplingConnection.module.f_m[3], 
-                            DownsamplingConnection.module.f_m[4], weight_dtype, activation_dtype),
-            ),
-            nn.Sequential(
-                QConvBatchReLU2d(DownsamplingConnection.module.f_s[0], 
-                                DownsamplingConnection.module.f_s[1], weight_dtype, activation_dtype),
-            ),
-        )
-
-    def forward(self, X):
-        """
-        Description
-        """
-        return self.module(X)
- 
 class QFlatten(nn.Module):
 
     def __init__(self, Flatten):
@@ -339,23 +271,41 @@ class QFlatten(nn.Module):
         """
         super().__init__()
         
+    @torch.no_grad()
     def forward(self, X):
         return torch.flatten(X, 1, -1)
+        
+class QSkipConnection(nn.Module):
 
-def compile_module(m):
-    if hasattr(m, "compile"):
-        m.compile()
+    def __init__(self, SkipConnection):
+        """
+        Description
+        """
+        super().__init__()
+        self.f = quantize_merge_model(SkipConnection.f, quantize_wrap=False)
+        self.c = quantize_merge_model(SkipConnection.c, quantize_wrap=False)
+        self.ff = nn.quantized.QFunctional()
+        
+    @torch.no_grad()
+    def forward(self, X):
+        """
+        Description
+        """
+        return self.ff.add_relu(self.c(X), self.f(X))
 
 map_to_q = {
     "Conv2d":QConv2d,
     "ConvBatch2d":QConvBatch2d,
     "ConvBatchReLU2d":QConvBatchReLU2d,
-    "BlockConnection":QBlockConnection,
-    "DownsamplingConnection":QDownsamplingConnection,
+    "SkipConnection":QSkipConnection,
     "AvgPool2d":QAvgPool2d,
     "Flatten":QFlatten,
     "Linear":QLinear
 }
+
+def compile_module(m):
+    if hasattr(m, "compile"):
+        m.compile()
 
 @torch.no_grad()
 def get_tensor_assym_scale_offset(data, dtype):
@@ -367,52 +317,36 @@ def get_tensor_assym_scale_offset(data, dtype):
     offset = q_min - (d_min/scale)
     return scale, offset
 
-def quantize_model(model):
-    qmodels = [QInput()]
-    k, n_modules = 0, len(model)
+def quantize_merge_model(model, quantize_wrap=True):
+    qmodels = []
+
+    if quantize_wrap:
+        qmodels += [QInput()]
+
+    if model._get_name() == "Identity":
+        return nn.Identity()
+    n_modules = len(model)
+    k = 0
+
     while k < n_modules:
         if model[k]._get_name() == "Conv2d":
-
-            if model[k+2]._get_name() == "ReLU" and\
-               model[k+1]._get_name() == "BatchNorm2d":
-                qmodels.append(
-                    map_to_q["ConvBatchReLU2d"](model[k], model[k+1])
-                )
-                k+=3
-
-            elif model[k+1]._get_name() == "BatchNorm2d":
-                qmodels.append(
-                    map_to_q["ConvBatch2d"](model[k], model[k+1])
+            if k+2 < n_modules:
+                if model[k+2]._get_name() == "ReLU" and\
+                model[k+1]._get_name() == "BatchNorm2d":
+                    qmodels.append(
+                        map_to_q["ConvBatchReLU2d"](model[k], model[k+1])
                     )
-                k+=2
+                    k+=3
+            elif k+1 < n_modules:
+                if model[k+1]._get_name() == "BatchNorm2d":
+                    qmodels.append(
+                        map_to_q["ConvBatch2d"](model[k], model[k+1])
+                        )
+                    k+=2
         else:
             qmodels.append(map_to_q[model[k]._get_name()](model[k]))
             k+=1
 
-    qmodels.append(DeQuantize())
-    return nn.Sequential(*qmodels)
-
-def quantize_merge_model(model):
-    qmodels = [QInput()]
-    k, n_modules = 0, len(model)
-    while k < n_modules:
-        if model[k]._get_name() == "Conv2d":
-
-            if model[k+2]._get_name() == "ReLU" and\
-               model[k+1]._get_name() == "BatchNorm2d":
-                qmodels.append(
-                    map_to_q["ConvBatchReLU2d"](model[k], model[k+1])
-                )
-                k+=3
-
-            elif model[k+1]._get_name() == "BatchNorm2d":
-                qmodels.append(
-                    map_to_q["ConvBatch2d"](model[k], model[k+1])
-                    )
-                k+=2
-        else:
-            qmodels.append(map_to_q[model[k]._get_name()](model[k]))
-            k+=1
-
-    qmodels.append(DeQuantize())
+    if quantize_wrap:
+        qmodels += [DeQuantize()]
     return nn.Sequential(*qmodels)
