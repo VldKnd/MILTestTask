@@ -80,8 +80,8 @@ def main():
     
     print("| Training | GPU {} | Epoches {} | Checkpoint {} |".format(
         is_cuda, cfg_train["n_epoches"], from_checkpoint))
-    
-    for epoch in (pbar := tqdm(range(last_epoch, cfg_train["n_epoches"]+last_epoch))):
+    pbar = tqdm(range(last_epoch, cfg_train["n_epoches"]+last_epoch))
+    for epoch in (pbar):
         CE_train, acc_train = train(trainloader, ResNet, optimResNet, CELoss, Acc, cfg["device"])
         CE_test, acc_test = validate(testloader, ResNet, CELoss, Acc, cfg["device"])
         schedResNet.step()
