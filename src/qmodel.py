@@ -275,7 +275,7 @@ class QFlatten(nn.Module):
     def forward(self, X):
         return torch.flatten(X, 1, -1)
         
-class QSkipConnection(nn.Module):
+class QSkipConnection(Q):
 
     def __init__(self, SkipConnection):
         """
@@ -284,14 +284,19 @@ class QSkipConnection(nn.Module):
         super().__init__()
         self.f = quantize_merge_model(SkipConnection.f, quantize_wrap=False)
         self.c = quantize_merge_model(SkipConnection.c, quantize_wrap=False)
-        self.ff = nn.quantized.QFunctional()
         
     @torch.no_grad()
     def forward(self, X):
         """
         Description
         """
-        return self.ff.add_relu(self.c(X), self.f(X))
+        if not self._computed:
+            self.set_activation_tensor_assym_scale_offset(
+                torch.relu(self.c(X).dequantize() +self.f(X).dequantize())
+            )
+
+        return torch.ops.quantized.add_relu(self.c(X), self.f(X),
+         self._activation_scale, self._activation_offset)
 
 map_to_q = {
     "Conv2d":QConv2d,

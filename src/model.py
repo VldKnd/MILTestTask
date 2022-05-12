@@ -1,5 +1,4 @@
 ### model Creation of ResNet20
-import torch
 from torch import nn
 
 
