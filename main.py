@@ -1,9 +1,7 @@
 ### Utilities
 import os
 import json
-import random 
 import argparse
-import warnings
 import numpy as np
 from tqdm import tqdm
 
@@ -17,7 +15,7 @@ from torchvision.datasets import CIFAR10
 from torch.optim.lr_scheduler import MultiStepLR
 
 ### Custom
-from src.model import model
+from src.model import ResNet20
 from src.train import train, validate
 from src.utils import Accuracy
 
@@ -59,24 +57,24 @@ def main():
     testset = CIFAR10(transform=test_transform, train=False, **cfg_CIFAR)
     testloader = DataLoader(dataset=testset, **cfg_dataloader_test)
 
-    ResNet20 = model().to(cfg["device"])
-    optimResNet20 = AdamW(ResNet20.parameters(), lr=1e-2)
-    schedResNet20 = MultiStepLR(optimResNet20, last_epoch=-1,
+    ResNet = ResNet20().to(cfg["device"])
+    optimResNet = AdamW(ResNet.parameters(), lr=1e-2)
+    schedResNet = MultiStepLR(optimResNet, last_epoch=-1,
                                 milestones=[100, 150], gamma=0.1)
 
     if from_checkpoint:
         checkpoint = torch.load(cfg["checkpoint_path"], map_location=cfg["device"])
         last_epoch = checkpoint["epoch"] + 1
         best_acc = checkpoint["best_acc"]
-        ResNet20.load_state_dict(checkpoint["state_dict"])
-        optimResNet20.load_state_dict(checkpoint["optimizer"])
-        schedResNet20.load_state_dict(checkpoint["scheduler"])
+        ResNet.load_state_dict(checkpoint["state_dict"])
+        optimResNet.load_state_dict(checkpoint["optimizer"])
+        schedResNet.load_state_dict(checkpoint["scheduler"])
 
     CELoss = nn.CrossEntropyLoss(reduction="sum")
     Acc = Accuracy(reduction="sum")
 
     if args.evaluate:
-        ce, acc = validate(testloader, ResNet20, CELoss, Acc, cfg["device"], verbose=True)
+        ce, acc = validate(testloader, ResNet, CELoss, Acc, cfg["device"], verbose=True)
         print("Cross Entropy: {:.3f}, Accuracy: {:.3f}".format(ce.avg, acc.avg))
         return
     
@@ -84,23 +82,23 @@ def main():
         is_cuda, cfg_train["n_epoches"], from_checkpoint))
     
     for epoch in (pbar := tqdm(range(last_epoch, cfg_train["n_epoches"]+last_epoch))):
-        CE_train, acc_train = train(trainloader, ResNet20, optimResNet20, CELoss, Acc, cfg["device"])
-        CE_test, acc_test = validate(testloader, ResNet20, CELoss, Acc, cfg["device"])
-        schedResNet20.step()
+        CE_train, acc_train = train(trainloader, ResNet, optimResNet, CELoss, Acc, cfg["device"])
+        CE_test, acc_test = validate(testloader, ResNet, CELoss, Acc, cfg["device"])
+        schedResNet.step()
 
         is_best = acc_test.avg > best_acc
         if is_best:
             best_acc = acc_test.avg
             torch.save({
                 'epoch': epoch + 1,
-                'state_dict': ResNet20.state_dict(),
+                'state_dict': ResNet.state_dict(),
                 'best_acc': best_acc,
-                'optimizer' : optimResNet20.state_dict(),
-                'scheduler' : schedResNet20.state_dict()
+                'optimizer' : optimResNet.state_dict(),
+                'scheduler' : schedResNet.state_dict()
             }, cfg["checkpoint_path"])
 
         pbar.set_description("Best Acc.: {:.3f} | Train: CE {:.3f} Acc. {:.3f}| Test: CE {:.3f} Acc. {:.3f} | LR: {}".format(
-                             best_acc, CE_train.avg, acc_train.avg, CE_test.avg, acc_test.avg, schedResNet20.get_last_lr()[0]))
+                             best_acc, CE_train.avg, acc_train.avg, CE_test.avg, acc_test.avg, schedResNet.get_last_lr()[0]))
 
 if __name__ == '__main__':
     main()

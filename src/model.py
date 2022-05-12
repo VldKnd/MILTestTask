@@ -1,82 +1,25 @@
 ### model Creation of ResNet20
+import torch
 from torch import nn
+
 
 class SkipConnection(nn.Module):
 
-    def __init__(self, f_m, f_s=None):
+    def __init__(self, f, c=nn.Identity()):
         """
         Description
         """
         super().__init__()
-        self.f_m = f_m
-        self.f_s = f_s
-        self.add_relu = nn.quantized.FloatFunctional()
+        self.f = f
+        self.c = c
         
     def forward(self, X):
         """
         Description
         """
-        if self.f_s is not None:
-            return self.add_relu.add_relu(self.f_s(X), self.f_m(X))
-        else:
-            return self.add_relu.add_relu(X, self.f_m(X))
+        return torch.relu(self.c(X) + self.f(X))
 
-class BlockConnection(nn.Module):
-
-    def __init__(self, channels, n_blocks):
-        """
-        Description
-        """
-        super().__init__()
-        self.connections = nn.ModuleList([
-            SkipConnection(
-                nn.Sequential(
-                    nn.Conv2d(channels, channels, 3, padding=1, bias=False),
-                    nn.BatchNorm2d(channels),
-                    nn.ReLU(),
-                    nn.Conv2d(channels, channels, 3, padding=1, bias=False),
-                    nn.BatchNorm2d(channels),
-                )
-            ) for _ in range(n_blocks)])
-
-    def forward(self, X):
-        """
-        Description
-        """
-        out = X
-        for i, module in enumerate(self.connections):
-            out = module(out)
-
-        return out
-
-class DownsamplingConnection(nn.Module):
-
-    def __init__(self, in_channels, out_channels):
-        """
-        Description
-        """
-        super().__init__()
-        self.module =  SkipConnection(
-            nn.Sequential(
-                nn.Conv2d(in_channels, out_channels, 3, padding=1, stride=2, bias=False),
-                nn.BatchNorm2d(out_channels),
-                nn.ReLU(),
-                nn.Conv2d(out_channels, out_channels, 3, padding=1, bias=False),
-                nn.BatchNorm2d(out_channels),
-            ),
-            nn.Sequential(
-                nn.Conv2d(in_channels, out_channels, 3, padding=1, stride=2, bias=False),
-                nn.BatchNorm2d(out_channels),
-            ),
-        )
-
-    def forward(self, X):
-        """
-        Description
-        """
-        return self.module(X)
-
-def model():
+def ResNet20():
     return nn.Sequential(
         ### Initial Layer
         nn.Conv2d(3, 16, 3, padding=1, bias=False),
@@ -84,13 +27,61 @@ def model():
         nn.ReLU(),
 
         ### Skip Connections
-        BlockConnection(16, 3),
-        DownsamplingConnection(16, 32),
+        *[SkipConnection(
+                nn.Sequential(
+                    nn.Conv2d(16, 16, 3, padding=1, bias=False),
+                    nn.BatchNorm2d(16),
+                    nn.ReLU(),
+                    nn.Conv2d(16, 16, 3, padding=1, bias=False),
+                    nn.BatchNorm2d(16),
+                )
+        ) for _ in range(3)],
+        SkipConnection(
+            nn.Sequential(
+                nn.Conv2d(16, 32, 3, padding=1, stride=2, bias=False),
+                nn.BatchNorm2d(32),
+                nn.ReLU(),
+                nn.Conv2d(32, 32, 3, padding=1, bias=False),
+                nn.BatchNorm2d(32),
+            ),
+            nn.Sequential(
+                nn.Conv2d(16, 32, 3, padding=1, stride=2, bias=False),
+                nn.BatchNorm2d(32),
+            ),
+        ),
 
-        BlockConnection(32, 2),
-        DownsamplingConnection(32, 64),
-
-        BlockConnection(64, 2),
+        *[SkipConnection(
+                nn.Sequential(
+                    nn.Conv2d(32, 32, 3, padding=1, bias=False),
+                    nn.BatchNorm2d(32),
+                    nn.ReLU(),
+                    nn.Conv2d(32, 32, 3, padding=1, bias=False),
+                    nn.BatchNorm2d(32),
+                )
+        ) for _ in range(3)],
+        SkipConnection(
+            nn.Sequential(
+                nn.Conv2d(32, 64, 3, padding=1, stride=2, bias=False),
+                nn.BatchNorm2d(64),
+                nn.ReLU(),
+                nn.Conv2d(64, 64, 3, padding=1, bias=False),
+                nn.BatchNorm2d(64),
+            ),
+            nn.Sequential(
+                nn.Conv2d(32, 64, 3, padding=1, stride=2, bias=False),
+                nn.BatchNorm2d(64),
+            ),
+        ),
+        
+        *[SkipConnection(
+                nn.Sequential(
+                    nn.Conv2d(64, 64, 3, padding=1, bias=False),
+                    nn.BatchNorm2d(64),
+                    nn.ReLU(),
+                    nn.Conv2d(64, 64, 3, padding=1, bias=False),
+                    nn.BatchNorm2d(64),
+                )
+        ) for _ in range(3)],
     
         ### Flattening
         nn.AvgPool2d(8),
