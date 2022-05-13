@@ -25,32 +25,40 @@
 train_resnet можно использовать для тренировки ResNet20. Я оставил возможность поменять часть пораметров тренировки. Такие как размер батча и количесвто эпох тренировки. Остальные параметры зафиксированны, их можно посмотреть в train_resnet.py. Я использовал [архитектуру](https://www.researchgate.net/figure/ResNet-20-architecture_fig3_351046093) с нормализацией по батчу после каждой конволюции.
 
 Пример конфигурации:
-```
+```json
 {
+    "_comment_json": "Поле для комментариев к переменным",
+    
     "cfg":{
-        "checkpoint_path":"./chkp/64_200" ### Куда сохранять веса модели
+        "_comment_chekpoint_path": "Куда сохранять веса модели",
+        "checkpoint_path":"./chkp/64_200"
     },
 
     "cfg_CIFAR":{
-        "root":"./data", ### Куда загружать или откуда выгружать CIFAR10
-        "download":true ### Загружать или не загружать данные
+        "_comment_root": "Куда загружать или откуда выгружать CIFAR10",
+        "root":"./data",
+        "_comment_download": "Загружать или не загружать данные",
+        "download":true
     },
-
-    "cfg_dataloader_train":{ ### Конфигурация для trainloader
+    
+    "_comment_cfg_dataloader_train":"Конфигурация для trainloader",
+    "cfg_dataloader_train":{
         "batch_size":64,
         "shuffle":true,
         "num_workers":2,
         "pin_memory":true
     },
 
-    "cfg_dataloader_test":{ ### Конфигурация для testloader
+    "_comment_cfg_dataloader_test":"Конфигурация для testloader",
+    "cfg_dataloader_test":{
         "batch_size":1024,
         "shuffle":false,
         "num_workers":2,
         "pin_memory":true
     },
 
-    "cfg_train":{ ### Конфигурация для цикла тренировки
+    "_comment_cfg_train":"Конфигурация для цикла тренировки",
+    "cfg_train":{
         "n_epoches":200
     }
 }
