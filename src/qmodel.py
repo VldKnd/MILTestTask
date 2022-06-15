@@ -7,16 +7,14 @@ class Q(nn.Module):
 
     def __init__(self, weight_dtype=torch.qint8, activation_dtype=torch.quint8):
         """
-        Базавый блок для кавнтированных аналогов функций из torch.nn.*
-        Этот класс нужен для того, что бы он инициализировать общие для всех блоков переменные и создать несколько удобных функций.
+        Basic block for quantization for functions from torch.nn.*.
+        This is a common for all the blocks class, which is used to init all other types of quantizatino.
 
         Parameters
         ----------
         weight_dtype : torch.dtype, (default = torch.qint8)
-            Тип данных для квантизации весов моделей
 
         activation_dtype : torch.dtype, (default = torch.quint8)
-            Тип данных для квантизации активаций
         """
         super().__init__()
         self.weight_dtype = weight_dtype
@@ -34,12 +32,11 @@ class Q(nn.Module):
     @torch.no_grad()
     def set_activation_tensor_assym_scale_offset(self, activation):
         """
-        Этот класс подсчитывает статистики для ассиметричной квантизации тензоров активации для следующего слоя в нейронной сети.
+        This class computes the statistics for assymetric quantization of tensors for the next layer of neural network.
 
         Parameters
         ----------
         activation : torch.Tensor,
-            Тензор активации, который необходимо квантизовать.
         """
         self.d_min = min(activation.min(), self.d_min) if self.d_min is not None\
                      else activation.min()
@@ -57,7 +54,7 @@ class Q(nn.Module):
     @torch.no_grad()
     def compile(self):
         """
-        Функция, которая удаляет не нужные перменные и меняет флаг для остановки пересчета статистик для квантизации.
+        Function that deletes temp. variables used for quantization.
         """
         self._computed = True
         del self.q_min
@@ -69,15 +66,13 @@ class QInput(Q):
 
     def __init__(self, weight_dtype=torch.qint8, activation_dtype=torch.quint8):
         """
-        Блок для квантизации входного тензора
+        Block for quantization of input tensor.
 
         Parameters
         ----------
         weight_dtype : torch.dtype, (default = torch.qint8)
-            Тип данных для квантизации весов моделей
 
         activation_dtype : torch.dtype, (default = torch.quint8)
-            Тип данных для квантизации активаций
         """
         super().__init__(weight_dtype, activation_dtype)
     
@@ -95,12 +90,11 @@ class QAvgPool2d(nn.Module):
     
     def __init__(self, AvgPool2d, *args, **kwargs):
         """
-        Квантизированный аналог nn.AvgPool2d
+        Quantized nn.AvgPool2d
 
         Parameters
         ----------
         AvgPool2d : nn.AvgPool2d,
-            AvgPool2d из оригинальной нейронной сети. Эта переменная нужна, что бы переписать параметры пулинга.
         """
         super().__init__()
         self.pool_kwargs = {
@@ -117,18 +111,15 @@ class QLinear(Q):
 
     def __init__(self, Linear, weight_dtype=torch.qint8, activation_dtype=torch.quint8):
         """
-        Квантизированный аналог nn.Linear
+        Quantized nn.Linear
 
         Parameters
         ----------
         Linear : nn.Linear,
-            Предобученый линейный слой из оригинальной сети.
 
         weight_dtype : torch.dtype, (default = torch.qint8)
-            Тип данных для квантизации весов моделей
 
         activation_dtype : torch.dtype, (default = torch.quint8)
-            Тип данных для квантизации активаций
         """
         super().__init__(weight_dtype, activation_dtype)
         self.Linear = Linear
@@ -177,18 +168,15 @@ class QConv2d(Q):
 
     def __init__(self, Conv2d, weight_dtype=torch.qint8, activation_dtype=torch.quint8):
         """
-        Квантизированный аналог nn.Conv2d
+        Quantized nn.Conv2d
 
         Parameters
         ----------
         Conv2d : nn.Conv2d,
-            Предобученый сверточный слой из оригинальной сети.
 
         weight_dtype : torch.dtype, (default = torch.qint8)
-            Тип данных для квантизации весов моделей
 
         activation_dtype : torch.dtype, (default = torch.quint8)
-            Тип данных для квантизации активаций
         """
         super().__init__(weight_dtype, activation_dtype)
 
@@ -238,21 +226,17 @@ class QConvBatch2d(QConv2d):
 
     def __init__(self, Conv2d, BatchNorm, weight_dtype=torch.qint8, activation_dtype=torch.quint8):
         """
-        Квантизированный аналог nn.Conv2d совмещенной с BatchNorm2d.
+        Quantized nn.Conv2d merged with BatchNorm2d.
 
         Parameters
         ----------
         Conv2d : nn.Conv2d,
-            Предобученый сверточный слой из оригинальной сети.
 
         BatchNorm : nn.BatchNorm,
-            Предобученная нормализация по батчу из оригинальной сети.
 
         weight_dtype : torch.dtype, (default = torch.qint8)
-            Тип данных для квантизации весов моделей
 
         activation_dtype : torch.dtype, (default = torch.quint8)
-            Тип данных для квантизации активаций
         """
         super().__init__(Conv2d, weight_dtype, activation_dtype)
         self.Conv2d = Conv2d
@@ -311,21 +295,17 @@ class QConvBatchReLU2d(QConvBatch2d):
 
     def __init__(self, Conv2d, BatchNorm, weight_dtype=torch.qint8, activation_dtype=torch.quint8):
         """
-        Квантизированный аналог nn.Conv2d совмещенной с BatchNorm2d и ReLU.
+        Quantized nn.Conv2d merged with BatchNorm2d and ReLU.
 
         Parameters
         ----------
         Conv2d : nn.Conv2d,
-            Предобученый сверточный слой из оригинальной сети.
 
         BatchNorm : nn.BatchNorm,
-            Предобученная нормализация по батчу из оригинальной сети.
 
         weight_dtype : torch.dtype, (default = torch.qint8)
-            Тип данных для квантизации весов моделей
 
         activation_dtype : torch.dtype, (default = torch.quint8)
-            Тип данных для квантизации активаций
         """
         super().__init__(Conv2d, BatchNorm, weight_dtype, activation_dtype)
 
@@ -337,7 +317,7 @@ class QFlatten(nn.Module):
 
     def __init__(self,  *args, **kwargs):
         """
-        Квантизированный аналог nn.Flatten
+        Quantized nn.Flatten
         """
         super().__init__()
         
@@ -349,18 +329,15 @@ class QSkipConnection(Q):
 
     def __init__(self, SkipConnection, weight_dtype=torch.qint8, activation_dtype=torch.quint8):
         """
-        Квантизированный аналог nn.Conv2d совмещенной с BatchNorm2d и ReLU.
+        Quantized SkipConnection from ResNet architecture.
 
         Parameters
         ----------
         SkipConnection : nn.Conv2d,
-            Предобученная SkipConnection из оригинальной сети.
 
         weight_dtype : torch.dtype, (default = torch.qint8)
-            Тип данных для квантизации весов моделей
 
         activation_dtype : torch.dtype, (default = torch.quint8)
-            Тип данных для квантизации активаций
         """
         super().__init__(weight_dtype, activation_dtype)
         self.f_o = SkipConnection.f
@@ -396,12 +373,11 @@ map_to_q = {
 
 def compile_module(m):
     """
-    Итерирует по всем блокам квантированной нейронной сети и вызывает compile методы, которые стирают не нужные данные и останавливают сбор статистик активаций.
-
+    Calling to the compile method of all subblocks of quantized network.
+    
     Parameters
     ----------
     m : nn.Module,
-        Модуль нейронной сети.
     """
     if hasattr(m, "compile"):
         m.compile()
@@ -409,15 +385,13 @@ def compile_module(m):
 @torch.no_grad()
 def get_tensor_assym_scale_offset(data, dtype):
     """
-    Подсчитывает статистики для ассимитричной квантизации тензора
+    Computes the statistics for assymetric quantization of tensor.
 
     Parameters
     ----------
     data : torch.Tensor,
-        Данные которые нужно квантизировать.
 
     dtype : torch.dtype,
-        Тип данных для квантизации.
     """
     d_min = data.min()
     d_max = data.max()
@@ -429,21 +403,17 @@ def get_tensor_assym_scale_offset(data, dtype):
 
 def quantize_merge_model(model, quantize_wrap=True, weight_dtype=torch.qint8, activation_dtype=torch.quint8):
     """
-    Квантизирует обуенную нейронную сеть
+    Quantized neural network.
 
     Parameters
     ----------
     model : torch.Tensor,
-        Нейронная сеть, которую необходимо квантизировать.
 
     quantize_wrap : bool, (default=True)
-        Флаг, означающий, нужно ли квантировать вход и трансформировать выход нейронной сети во float.
 
     weight_dtype : torch.dtype, (default = torch.qint8)
-        Тип данных для квантизации весов моделей
 
     activation_dtype : torch.dtype, (default = torch.quint8)
-        Тип данных для квантизации активаций
     """
     qmodels = []
 
