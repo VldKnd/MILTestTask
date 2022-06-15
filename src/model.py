@@ -6,10 +6,10 @@ class SkipConnection(nn.Module):
 
     def __init__(self, f, c=nn.Identity()):
         """
-        Имплементация SkipConnection для ResNet архитектуры.
-        Замещает стандартную нейронную сеть f(x): R_n -> R_n на f(x)+x 
-                                            f(x): R_n -> R_M на f(x)+c(x)
-        Параметры
+        Implementation of SkipConnection for ResNet architecture.
+        Replaces the standart neural network f(x): R_n -> R_n for f(x)+x 
+                                             f(x): R_n -> R_M for f(x)+c(x)
+        Parameters
         ----------
         f : torch.nn.Module,
             
