@@ -5,22 +5,22 @@ This is my implementation of variation of quantization of neural network called 
 ```
 .
 ├── cfg                   
-│   ├── 64_200.json     ### Файл с конфигурацией нейронной сети и DataLoader, которые я использовал для обучения ResNet
-│   └── example.json    ### Пример возможного файла с конфигурацией
-├── chkp                ### Сохраненные веса для моделей  
-│   ├── 64_200          ### Веса для не квантированного ResNet20, точность на тест 92%
-│   ├── 64_200_int2     ### Веса для квантированного ResNet20 в int2
-│   ├── 64_200_int4     ### Веса для квантированного ResNet20 в int4
-│   └── 64_200_int8     ### Веса для квантированного ResNet20 в int8 
+│   ├── 64_200.json     ### Configuration file with neural network and DataLoader config.
+│   └── example.json
+├── chkp                ### Saved model weights.  
+│   ├── 64_200          ### Weights for not quantized network ResNet20, the accuracy on CIFAR10 test 92%.
+│   ├── 64_200_int2     ### Quantized to int2.
+│   ├── 64_200_int4     ### Quantized to int2.
+│   └── 64_200_int8     ### Quantized to int2.
 ├── src
-│   ├── model.py        ### Файл с имплементацией ResNet блока и архитектуры               
-│   ├── qmodel.py       ### Файл с имплементацией квантированных аналогов блоков из PyTorch        
-│   ├── train.py        ### Функции для тренировки и валидации нейронной сети  
-│   ├── utils.py        ### Всякие полезные функции
+│   ├── model.py        ### Custom implementation of ResNet blocks and architecture.            
+│   ├── qmodel.py       ### Quantized blocks.       
+│   ├── train.py        ### Function for training and validation of neural network.
+│   ├── utils.py        ### Utilities.
 │   └── __init__.py
-├── PTQ.ipynb           ### Короткий нотбук с реализацией квантированной ResNet20 в int2, int4, int8. В int8 с совмещением Conv2d и Batch Norm.
-│                       ### Так же тестирование моей имплементации квантизирования и основные результаты
-├── train_resnet.py     ### Файл с тренировкой ResNet20
+├── PTQ.ipynb           ### Short notebook with quantization of ResNet20 to int2, int4, int8 and int8 with merged Conv2d and BatchNorm.
+│
+├── train_resnet.py
 ├── requirements.txt
 └── README.md
 ```
