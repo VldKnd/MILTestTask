@@ -1,4 +1,7 @@
-#### Структура:
+This is my implementation of variation of quantization of neural network called static post training quantization. The sources i found useful while reading about it:
+
+
+#### Structure:
 ```
 .
 ├── cfg                   
@@ -21,27 +24,26 @@
 ├── requirements.txt
 └── README.md
 ```
-1.2.3.4. Что бы скачать CIFAR10, можно в конфигурации поставить ```download:true```. Тогда при запуске ```train_resnet.py``` скачает его в папку ```/data```.
-```train_resnet``` можно использовать для тренировки ResNet20. Я оставил возможность поменять часть параметров тренировки. Такие как размер батча и количесвто эпох тренировки. Остальные параметры зафиксированны, их можно посмотреть в ```train_resnet.py```. Я использовал [архитектуру](https://www.researchgate.net/figure/ResNet-20-architecture_fig3_351046093) с нормализацией по батчу после каждой конволюции.
+To download CIFAR10 it is possible to put ```download:true```in the config file. Then while running ```train_resnet.py```will download it to the folder ```\data```. ```train_resnet```can be used to train ResNet20. I have left the possibility to change the hypersettings, such as batch size and number of training epoches. All other parameters are fixed, you can check them out in train_resnet.py. I have used the [architecture](https://www.researchgate.net/figure/ResNet-20-architecture_fig3_351046093) with batch normalization after the convolutions.
 
-Пример конфигурации:
+Example of configuration:
 ```json
 {
-    "_comment_json": "Поле для комментариев к переменным",
+    "_comment_json": "This field is used for comments only",
     
     "cfg":{
-        "_comment_chekpoint_path": "Куда сохранять веса модели",
+        "_comment_chekpoint_path": "The path to save models",
         "checkpoint_path":"./chkp/64_200"
     },
 
     "cfg_CIFAR":{
-        "_comment_root": "Куда загружать или откуда выгружать CIFAR10",
+        "_comment_root": "Data Folder CIFAR10",
         "root":"./data",
-        "_comment_download": "Загружать или не загружать данные",
+        "_comment_download": "Wether to download the files or not",
         "download":true
     },
     
-    "_comment_cfg_dataloader_train":"Конфигурация для trainloader",
+    "_comment_cfg_dataloader_train":"Configuration for trainloader",
     "cfg_dataloader_train":{
         "batch_size":64,
         "shuffle":true,
@@ -49,7 +51,7 @@
         "pin_memory":true
     },
 
-    "_comment_cfg_dataloader_test":"Конфигурация для testloader",
+    "_comment_cfg_dataloader_test":"Configuration for testloader",
     "cfg_dataloader_test":{
         "batch_size":1024,
         "shuffle":false,
@@ -57,36 +59,16 @@
         "pin_memory":true
     },
 
-    "_comment_cfg_train":"Конфигурация для цикла тренировки",
+    "_comment_cfg_train":"Configuration for training cycle",
     "cfg_train":{
         "n_epoches":200
     }
 }
 ```
-Пример использовния ```train_resnet.py```
+Usage example of ```train_resnet.py```
 ```
 python train_resnet.py cfg/64_200.json
 ```
-5. Я реализовал готовое решение квантизации в ```PTQ.ipynb```. Я выбрал самый простой метод сбора статистик (MinMax) его конечно можно улучшить выбрав более подходящий модуль, который представлен в PyTorch, например Гистограммы для сбора статистик. 
-
-### Attention
-
-> Квантовать к 16 и 8 битам. Квантовать уже обученную модель, которая была получена на шаге 4.
-> 
-Вы попросили проквантовать сеть к 16 и 8 битам, но [торч пока что поддерживает только int8](https://discuss.pytorch.org/t/expending-pytorch-with-lower-than-8-bit-quantization/80343). Поэтому результаты получились предсказуеммыми только для int8. Более того, для квантизации весов торч поддерживает только uint8. Не смотря на это, можно ограничить промежуток используемых для квантизации значений, тем самым "симулировать" int4/int2 в методах представленных в torch. Однако, все они так же будут хранится в int8/uint8, из чего следует, что размер модели квантированной в int4 или int2 не будет отличаться от модели в int8 (не смотря на то, что должен) и инференс тайм будет тем же. Квантизация ниже int8 просто сильно ухудшит качество предсказания. См результаты ниже.
-
-Так же, для сравнения я добавил эксперименты с моделью, в которой я совместил Conv2d, BatchNorm2d, ReLU, которые идут подряд.
-
-6. Я реализовал сразу квантизацию сети с совмещенными Conv2d, BatchNorm2d, ReLU (код можно довольно быстро расширить и на случай без совмещения слоев). Весь код с реализацией слоев находится в ```src/qmodel.py```. Логика, которую я реализовал копирует модель и пропускает несколько батчей, сохраняя при этом активации после всех выходов, что бы после их точно квантизировать. После этого, вызывая compile у каждого квантированного модуля, код чистит не нужные веса и сохраняет получившуюся квантированную модель. 
-
-
-### Attention
-
-> Квантовать к 16, 8, 4 и 2 битам. Квантовать уже обученную модель, которая была получена на шаге 4.
-
-Ситуация такая же, как и в пункте 5.
-
-7. Здесь я представлю получившиеся результаты, они все взяты из PTQ.ipynb .
 
 **Results** | Original | PyTorch int2 | PyTorch int4 | PyTorch int8 | Fused PyTorch int8 | My Model int8
 ------ | ------ | ------ | ------ | ------ | ------ | ------ 
